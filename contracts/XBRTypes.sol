@@ -57,6 +57,21 @@ library XBRTypes {
     /// All XBR state channel states defined.
     enum ChannelState { NULL, OPEN, CLOSING, CLOSED, FAILED }
 
+    /// Lava Protocol (https://lavaprotocol.com) ERC20 metatransaction.
+    struct LavaPacket {
+        // do not touch / and keep synced to https://github.com/admazzola/lava-wallet/blob/master/contracts/LavaWallet.sol
+        string methodName;
+        address relayAuthority; // either a contract or an account
+        address from;
+        address to;
+        address wallet;  // the wallet contract address
+        address token;
+        uint256 tokens;
+        uint256 relayerRewardTokens;
+        uint256 expires;
+        uint256 nonce;
+    }
+
     /// Container type for holding XBR network membership information.
     struct Member {
         /// Block number when the member was (initially) registered in the XBR network.
@@ -359,6 +374,21 @@ library XBRTypes {
 
         /// Closing transaction signature by market maker supplied when requesting to close the channel.
         bytes marketmakerSignature;
+    }
+
+    /// Lava Protocol (https://lavaprotocol.com) ERC20 metatransaction.
+    struct EIP712LavaTransaction {
+        // do not touch / and keep synced to https://github.com/admazzola/lava-wallet/blob/master/contracts/LavaWallet.sol
+        string methodName;
+        address relayAuthority; // either a contract or an account
+        address from;
+        address to;
+        address wallet;  // the wallet contract address
+        address token;
+        uint256 tokens;
+        uint256 relayerRewardTokens;
+        uint256 expires;
+        uint256 nonce;
     }
 
     /// EIP712 type for XBR as a type domain.
@@ -738,6 +768,17 @@ library XBRTypes {
         bool isFinal;
     }
 
+    /// Lava Protocol project wallet address on mainnet (https://etherscan.io/address/0x1bf797219482a29013d804ad96d1c6f84fba4c45)
+    address public constant LAVA_PROJECT_WALLET_ADR = 0x1Bf797219482A29013d804Ad96D1C6F84FBA4C45;
+
+    /// EIP712 type data. - DO NOT TOUCH THE STRING VALUE!
+    // solhint-disable-next-line
+    bytes32 constant EIP712_LAVADOMAIN_TYPEHASH = keccak256("EIP712Domain(string contractName,string version,uint256 chainId,address verifyingContract)");
+
+    /// EIP712 type data. - DO NOT TOUCH THE STRING VALUE!
+    // solhint-disable-next-line
+    bytes32 constant EIP712_LAVAPACKET_TYPEHASH = keccak256("LavaPacket(string methodName,address relayAuthority,address from,address to,address wallet,address token,uint256 tokens,uint256 relayerRewardTokens,uint256 expires,uint256 nonce)");
+
     /// EIP712 type data.
     // solhint-disable-next-line
     bytes32 constant EIP712_DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version)");
@@ -835,6 +876,48 @@ library XBRTypes {
             name: "XBR",
             version: "1"
         }));
+    }
+
+    function getLavaProtocolDomainHash(string memory contractName, string memory version,
+        uint256 chainId, address verifyingContract) public pure returns (bytes32) {
+        // do not touch / and keep synced to https://github.com/admazzola/lava-wallet/blob/master/contracts/LavaWallet.sol
+        return keccak256(abi.encode(
+            EIP712_LAVADOMAIN_TYPEHASH,
+            keccak256(bytes(contractName)),
+            keccak256(bytes(version)),
+            chainId,
+            verifyingContract
+        ));
+    }
+
+    function getLavaProtocolPacketHash(string memory methodName, address relayAuthority, address from,
+        address to, address wallet, address token, uint256 tokens, uint256 relayerRewardTokens,
+        uint256 expires, uint256 nonce) public pure returns (bytes32) {
+        // do not touch / and keep synced to https://github.com/admazzola/lava-wallet/blob/master/contracts/LavaWallet.sol
+        return keccak256(abi.encode(
+            EIP712_LAVAPACKET_TYPEHASH,
+            keccak256(bytes(methodName)),
+            relayAuthority,
+            from,
+            to,
+            wallet,
+            token,
+            tokens,
+            relayerRewardTokens,
+            expires,
+            nonce
+        ));
+    }
+
+    function hash (EIP712LavaTransaction memory obj) private pure returns (bytes32) {
+        // do not touch / and keep synced to https://github.com/admazzola/lava-wallet/blob/master/contracts/LavaWallet.sol
+        return keccak256(abi.encodePacked(
+            "\x19\x01",
+            // FIXME: read chain_id at run-time
+            getLavaProtocolDomainHash("Lava Wallet", "1", 1, LAVA_PROJECT_WALLET_ADR),
+            getLavaProtocolPacketHash(obj.methodName, obj.relayAuthority, obj.from, obj.to, obj.wallet,
+                obj.token, obj.tokens, obj.relayerRewardTokens, obj.expires, obj.nonce)
+        ));
     }
 
     function hash (EIP712MemberRegister memory obj) private pure returns (bytes32) {
@@ -1184,5 +1267,17 @@ library XBRTypes {
         ));
 
         return ecrecover(digest, v, r, s) == signer;
+    }
+
+    /// Check if the given address is a contract.
+    function isContract(address adr) public view returns (bool) {
+        uint256 codeLength;
+
+        assembly {
+            // Retrieve the size of the code on target address, this needs assembly .
+            codeLength := extcodesize(adr)
+        }
+
+        return codeLength > 0;
     }
 }
