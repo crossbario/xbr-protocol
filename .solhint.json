@@ -5,6 +5,7 @@
         "max-line-length": ["error", 160],
         "separate-by-one-line-in-contract": "off",
         "compiler-fixed": "off",
-        "code-complexity": "off"
+        "code-complexity": "off",
+        "no-unused-vars": "off"
     }
 }

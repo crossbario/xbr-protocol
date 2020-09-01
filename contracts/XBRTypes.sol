@@ -738,9 +738,25 @@ library XBRTypes {
         bool isFinal;
     }
 
+    /// EIP712 Approve type data.
+    struct EIP712ApproveTransfer {
+        uint256 chainId;
+        address verifyingContract;
+        address sender;
+        address relayer;
+        address spender;
+        uint256 amount;
+        uint256 expires;
+        uint256 nonce;
+    }
+
     /// EIP712 type data.
     // solhint-disable-next-line
     bytes32 constant EIP712_DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version)");
+
+    /// EIP712 type data.
+    // solhint-disable-next-line
+    bytes32 constant EIP712_APPROVE_TRANSFER_TYPEHASH = keccak256("EIP712Approve(uint256 chainId,address verifyingContract,address sender,address relayer,address spender,uint256 amount,uint256 expires,uint256 nonce)");
 
     /// EIP712 type data.
     // solhint-disable-next-line
@@ -820,7 +836,7 @@ library XBRTypes {
         return (v, r, s);
     }
 
-    function hash(EIP712Domain memory domain_) private pure returns (bytes32) {
+    function hash(EIP712Domain memory domain_) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_DOMAIN_TYPEHASH,
             keccak256(bytes(domain_.name)),
@@ -828,7 +844,7 @@ library XBRTypes {
         ));
     }
 
-    function domainSeparator () private pure returns (bytes32) {
+    function domainSeparator () public pure returns (bytes32) {
         // makes signatures from different domains incompatible.
         // see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md#arbitrary-messages
         return hash(EIP712Domain({
@@ -837,7 +853,21 @@ library XBRTypes {
         }));
     }
 
-    function hash (EIP712MemberRegister memory obj) private pure returns (bytes32) {
+    function hash (EIP712ApproveTransfer memory obj) public pure returns (bytes32) {
+        return keccak256(abi.encode(
+            EIP712_APPROVE_TRANSFER_TYPEHASH,
+            obj.chainId,
+            obj.verifyingContract,
+            obj.sender,
+            obj.relayer,
+            obj.spender,
+            obj.amount,
+            obj.expires,
+            obj.nonce
+        ));
+    }
+
+    function hash (EIP712MemberRegister memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_MEMBER_REGISTER_TYPEHASH,
             obj.chainId,
@@ -849,7 +879,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712MemberUnregister memory obj) private pure returns (bytes32) {
+    function hash (EIP712MemberUnregister memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_MEMBER_UNREGISTER_TYPEHASH,
             obj.chainId,
@@ -859,7 +889,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712DomainCreate memory obj) private pure returns (bytes32) {
+    function hash (EIP712DomainCreate memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_DOMAIN_CREATE_TYPEHASH,
             obj.chainId,
@@ -874,7 +904,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712NodePair memory obj) private pure returns (bytes32) {
+    function hash (EIP712NodePair memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_NODE_PAIR_TYPEHASH,
             obj.chainId,
@@ -889,7 +919,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712CatalogCreate memory obj) private pure returns (bytes32) {
+    function hash (EIP712CatalogCreate memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_CATALOG_CREATE_TYPEHASH,
             obj.chainId,
@@ -902,7 +932,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712ApiPublish memory obj) private pure returns (bytes32) {
+    function hash (EIP712ApiPublish memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_API_PUBLISH_TYPEHASH,
             obj.chainId,
@@ -916,7 +946,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712MarketCreate memory obj) private pure returns (bytes32) {
+    function hash (EIP712MarketCreate memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_MARKET_CREATE_TYPEHASH,
             obj.chainId,
@@ -934,7 +964,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712MarketJoin memory obj) private pure returns (bytes32) {
+    function hash (EIP712MarketJoin memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_MARKET_JOIN_TYPEHASH,
             obj.chainId,
@@ -947,7 +977,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712MarketLeave memory obj) private pure returns (bytes32) {
+    function hash (EIP712MarketLeave memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_MARKET_JOIN_TYPEHASH,
             obj.chainId,
@@ -959,7 +989,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712Consent memory obj) private pure returns (bytes32) {
+    function hash (EIP712Consent memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_CONSENT_TYPEHASH,
             obj.chainId,
@@ -975,7 +1005,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712ChannelOpen memory obj) private pure returns (bytes32) {
+    function hash (EIP712ChannelOpen memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_CHANNEL_OPEN_TYPEHASH,
             obj.chainId,
@@ -992,7 +1022,7 @@ library XBRTypes {
         ));
     }
 
-    function hash (EIP712ChannelClose memory obj) private pure returns (bytes32) {
+    function hash (EIP712ChannelClose memory obj) public pure returns (bytes32) {
         return keccak256(abi.encode(
             EIP712_CHANNEL_CLOSE_TYPEHASH,
             obj.chainId,
@@ -1004,6 +1034,21 @@ library XBRTypes {
             obj.balance,
             obj.isFinal
         ));
+    }
+
+    /// Verify signature on typed data for transfering XBRToken.
+    function verify (address signer, EIP712ApproveTransfer memory obj,
+        bytes memory signature) public pure returns (bool) {
+
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+
+        bytes32 digest = keccak256(abi.encodePacked(
+            "\x19\x01",
+            domainSeparator(),
+            hash(obj)
+        ));
+
+        return ecrecover(digest, v, r, s) == signer;
     }
 
     /// Verify signature on typed data for registering a member.

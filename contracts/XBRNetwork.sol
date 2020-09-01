@@ -19,22 +19,50 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+
 // https://openzeppelin.org/api/docs/math_SafeMath.html
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 
 import "./XBRMaintained.sol";
 import "./XBRTypes.sol";
-import "./XBRToken.sol";
 
 
 /**
  * The `XBR Network <https://github.com/crossbario/xbr-protocol/blob/master/contracts/XBRNetwork.sol>`__
  * contract is the on-chain anchor of and the entry point to the XBR protocol.
  */
-contract XBRNetwork is XBRMaintained {
+contract XBRNetwork is Initializable, AccessControlUpgradeSafe {
 
     // Add safe math functions to uint256 using SafeMath lib from OpenZeppelin
     using SafeMath for uint256;
+
+    // Create a new role identifier for the minter role
+    bytes32 public MAINTAINER_ROLE;
+
+    /**
+     * Event fired when a maintainer was added.
+     *
+     * @param account The account that was added as a maintainer.
+     */
+    event MaintainerAdded(address indexed account);
+
+    /**
+     * Event fired when a maintainer was removed.
+     *
+     * @param account The account that was removed as a maintainer.
+     */
+    event MaintainerRemoved(address indexed account);
+
+    /**
+     * Modifier to require maintainer-role for the sender when calling a SC.
+     */
+    modifier onlyMaintainer () {
+        require(isMaintainer(msg.sender));
+        _;
+    }
 
     /// Event emitted when a new member registered in the XBR Network.
     event MemberRegistered (address indexed member, uint registered, string eula, string profile, XBRTypes.MemberLevel level);
@@ -49,10 +77,10 @@ contract XBRNetwork is XBRMaintained {
     event CoinChanged (address indexed coin, address operator, bool isPayable);
 
     /// Special addresses used as "any address" marker in mappings (eg coins).
-    address public constant ANYADR = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
+    address public ANYADR;
 
     /// Limit to how old a pre-signed transaction is accetable (eg in "registerMemberFor" and similar).
-    uint256 public PRESIGNED_TXN_MAX_AGE = 1440;
+    uint256 public PRESIGNED_TXN_MAX_AGE;
 
     /// Chain ID of the blockchain this contract is running on, used in EIP712 typed data signature verification.
     uint256 public verifyingChain;
@@ -61,13 +89,15 @@ contract XBRNetwork is XBRMaintained {
     address public verifyingContract;
 
     /// IPFS multihash of the `XBR Network EULA <https://github.com/crossbario/xbr-protocol/blob/master/EULA>`__.
-    string public eula = "QmUEM5UuSUMeET2Zo8YQtDMK74Fr2SJGEyTokSYzT3uD94";
+    string public eula;
 
     /// XBR network contributions from markets for the XBR project, expressed as a fraction of the total amount of XBR tokens.
     uint256 public contribution;
 
     /// Address of the XBR Networks' own ERC20 token for network-wide purposes.
-    XBRToken public token;
+    // XBRToken public token;
+    // IERC20
+    address public token;
 
     /// Address of the `XBR Network Organization <https://xbr.network/>`__.
     address public organization;
@@ -84,7 +114,21 @@ contract XBRNetwork is XBRMaintained {
     ///                     any ERC20 token (enabled in the ``coins`` mapping of this contract) as
     ///                     a means of payment in the respective market.
     /// @param networkOrganization The XBR network organization address.
-    constructor (address networkToken, address networkOrganization) public {
+    // function initialize () internal initializer {
+    function initialize (address networkToken, address networkOrganization) public initializer {
+        // https://forum.openzeppelin.com/t/how-to-use-ownable-with-upgradeable-contract/3336/4
+        // https://github.com/OpenZeppelin/openzeppelin-contracts-ethereum-package/blob/32e1c6f564a14e5404012ceb59d605cdb82112c6/contracts/access/AccessControl.sol#L40
+        __Context_init_unchained();
+        __AccessControl_init_unchained();
+
+        // The constructor is internal (roles are managed by the OpenZeppelin
+        // base class).
+        MAINTAINER_ROLE = keccak256("MAINTAINER_ROLE");
+        _setupRole(MAINTAINER_ROLE, msg.sender);
+
+        ANYADR = 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF;
+        PRESIGNED_TXN_MAX_AGE = 1440;
+        eula = "QmUEM5UuSUMeET2Zo8YQtDMK74Fr2SJGEyTokSYzT3uD94";
 
         // read chain ID into temp local var (to avoid "TypeError: Only local variables are supported").
         uint256 chainId;
@@ -94,12 +138,14 @@ contract XBRNetwork is XBRMaintained {
         verifyingChain = chainId;
         verifyingContract = address(this);
 
-        token = XBRToken(networkToken);
+        // token = XBRToken(networkToken);
+        // token = IERC20(networkToken);
+        token = networkToken;
+
         coins[networkToken][ANYADR] = true;
         emit CoinChanged(networkToken, ANYADR, true);
 
-        contribution = token.totalSupply() * 30 / 100;
-
+        contribution = IERC20(token).totalSupply() * 30 / 100;
         organization = networkOrganization;
 
         uint256 registered = block.timestamp;
@@ -107,6 +153,42 @@ contract XBRNetwork is XBRMaintained {
         // technically, the creator of the XBR network contract instance is a XBR member (by definition).
         members[msg.sender] = XBRTypes.Member(registered, "", "", XBRTypes.MemberLevel.VERIFIED, "");
         emit MemberRegistered(msg.sender, registered, "", "", XBRTypes.MemberLevel.VERIFIED);
+    }
+
+    /**
+     * Check if the given address is currently a maintainer.
+     *
+     * @param account The account to check.
+     * @return `true` if the account is maintainer, otherwise `false`.
+     */
+    function isMaintainer (address account) public view returns (bool) {
+        return hasRole(MAINTAINER_ROLE, account);
+    }
+
+    /**
+     * Add a new maintainer to the list of maintainers.
+     *
+     * @param account The account to grant maintainer rights to.
+     */
+    function addMaintainer (address account) public onlyMaintainer {
+        _addMaintainer(account);
+    }
+
+    /**
+     * Give away maintainer rights.
+     */
+    function renounceMaintainer () public {
+        _removeMaintainer(msg.sender);
+    }
+
+    function _addMaintainer (address account) internal {
+        grantRole(MAINTAINER_ROLE, account);
+        emit MaintainerAdded(account);
+    }
+
+    function _removeMaintainer (address account) internal {
+        revokeRole(MAINTAINER_ROLE, account);
+        emit MaintainerRemoved(account);
     }
 
     /// Register the sender of this transaction in the XBR network. All XBR stakeholders, namely data
@@ -191,6 +273,10 @@ contract XBRNetwork is XBRMaintained {
         require(members[member].level == XBRTypes.MemberLevel.ACTIVE ||
                 members[member].level == XBRTypes.MemberLevel.VERIFIED, "MEMBER_NOT_REGISTERED");
 
+        // workaround because I cannot find the fucking option to disable
+        // the "Warning: Unused function parameter." shit
+        require(signature.length >= 0);
+
         // remember the member left the network
         members[member].level = XBRTypes.MemberLevel.RETIRED;
 
@@ -206,7 +292,8 @@ contract XBRNetwork is XBRMaintained {
     function setNetworkToken (address networkToken) public onlyMaintainer returns (bool) {
         if (networkToken != address(token)) {
             coins[address(token)][ANYADR] = false;
-            token = XBRToken(networkToken);
+            // token = XBRToken(networkToken);
+            token = networkToken;
             coins[networkToken][ANYADR] = true;
             return true;
         } else {
@@ -265,7 +352,7 @@ contract XBRNetwork is XBRMaintained {
     ///                            tokens and the total token supply.
     /// @return Flag indicating whether the contribution value was actually changed.
     function setContribution (uint256 networkContribution) public onlyMaintainer returns (bool) {
-        require(networkContribution >= 0 && networkContribution <= token.totalSupply(), "INVALID_CONTRIBUTION");
+        require(networkContribution >= 0 && networkContribution <= IERC20(token).totalSupply(), "INVALID_CONTRIBUTION");
         if (contribution != networkContribution) {
             contribution = networkContribution;
             return true;

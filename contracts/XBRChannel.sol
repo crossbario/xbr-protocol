@@ -19,11 +19,19 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+// normally, we would import "@openzeppelin/contracts", but we want to use
+// upgradeable contracts, and hence must use upgradeable flavor for imports
+// from "@openzeppelin/contracts-ethereum-package"
+// https://docs.openzeppelin.com/learn/developing-smart-contracts#importing_openzeppelin_contracts
+// https://docs.openzeppelin.com/cli/2.8/dependencies#linking-the-contracts-ethereum-package
+
 // https://openzeppelin.org/api/docs/math_SafeMath.html
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 
 // https://openzeppelin.org/api/docs/cryptography_ECDSA.html
-import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+// import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/cryptography/ECDSA.sol";
 
 import "./XBRMaintained.sol";
 import "./XBRTypes.sol";
@@ -36,7 +44,7 @@ import "./XBRMarket.sol";
  * XBR Payment/Paying Channel between a XBR data consumer and the XBR market maker,
  * or the XBR Market Maker and a XBR data provider.
  */
-contract XBRChannel is XBRMaintained {
+contract XBRChannel is Initializable {
 
     // Add safe math functions to uint256 using SafeMath lib from OpenZeppelin
     using SafeMath for uint256;
@@ -67,7 +75,7 @@ contract XBRChannel is XBRMaintained {
     XBRMarket public market;
 
     /// Created channels are sequence numbered using this counter (to allow deterministic collision-free IDs for channels)
-    uint32 private channelSeq = 1;
+    uint32 private channelSeq;
 
     /// Table of all XBR Channels.
     mapping(bytes16 => XBRTypes.Channel) public channels;
@@ -78,8 +86,9 @@ contract XBRChannel is XBRMaintained {
     /// Constructor for this contract, only called once (when deploying the network).
     ///
     /// @param marketAdr The XBR markets contract this instance is associated with.
-    constructor (address marketAdr) public {
+    function initialize (address marketAdr) public initializer {
         market = XBRMarket(marketAdr);
+        channelSeq = 1;
     }
 
     /// Open a new XBR payment/paying channel for processing off-chain micro-transactions.
@@ -270,7 +279,7 @@ contract XBRChannel is XBRMaintained {
         // the fee of the market operator (before network fees) is a percentage of the earned amount, where
         // "percentage" is expressed as a fraction of the total amount of tokens (coins used in the market)
         uint256 fee = earned * market.getMarketFee(channels[channelId].marketId) / IERC20(coin).totalSupply();
-        uint256 contribution = fee * market.network().contribution() / market.network().token().totalSupply();
+        uint256 contribution = fee * market.network().contribution() / IERC20(market.network().token()).totalSupply();
 
         // the amount paid out to the recipient is gross earned minus market fees
         // FIXME: CompilerError: Stack too deep, try removing local variables.
@@ -295,6 +304,10 @@ contract XBRChannel is XBRMaintained {
     }
 
     function _doClose(bytes16 channelId, uint32 closingChannelSeq, uint256 balance) private {
+        // workaround because I cannot find the fucking option to disable
+        // the "Warning: Unused function parameter." shit
+        require(closingChannelSeq >= 0);
+
         // the ERC20 coin used in the market as a means of payment
         address coin = market.getMarketCoin(channels[channelId].marketId);
 
@@ -308,7 +321,7 @@ contract XBRChannel is XBRMaintained {
         // the fee of the market operator (before network fees) is a percentage of the earned amount, where
         // "percentage" is expressed as a fraction of the total amount of tokens (coins used in the market)
         uint256 fee = earned * market.getMarketFee(channels[channelId].marketId) / IERC20(coin).totalSupply();
-        uint256 contribution = fee * market.network().contribution() / market.network().token().totalSupply();
+        uint256 contribution = fee * market.network().contribution() / IERC20(market.network().token()).totalSupply();
 
         // now send tokens locked in this channel (which escrows the tokens) to the recipient,
         // the xbr network (for the network fee), and refund remaining tokens to the original sender

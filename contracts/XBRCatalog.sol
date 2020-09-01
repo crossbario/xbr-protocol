@@ -20,16 +20,16 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 // https://openzeppelin.org/api/docs/math_SafeMath.html
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 
 import "./XBRMaintained.sol";
 import "./XBRTypes.sol";
-import "./XBRToken.sol";
 import "./XBRNetwork.sol";
 
 
 /// XBR API catalogs contract.
-contract XBRCatalog is XBRMaintained {
+contract XBRCatalog is Initializable {
 
     // Add safe math functions to uint256 using SafeMath lib from OpenZeppelin
     using SafeMath for uint256;
@@ -46,7 +46,7 @@ contract XBRCatalog is XBRMaintained {
     XBRNetwork public network;
 
     /// Created catalogs are sequence numbered using this counter (to allow deterministic collision-free IDs for markets)
-    uint32 private catalogSeq = 1;
+    uint32 private catalogSeq;
 
     /// Current XBR Catalogs ("catalog directory")
     mapping(bytes16 => XBRTypes.Catalog) public catalogs;
@@ -57,8 +57,9 @@ contract XBRCatalog is XBRMaintained {
     // Constructor for this contract, only called once (when deploying the network).
     //
     // @param networkAdr The XBR network contract this instance is associated with.
-    constructor (address networkAdr) public {
+    function initialize (address networkAdr) public initializer {
         network = XBRNetwork(networkAdr);
+        catalogSeq = 1;
     }
 
     /// Create a new XBR catalog. The sender of the transaction must be XBR network member

@@ -20,11 +20,11 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 // https://openzeppelin.org/api/docs/math_SafeMath.html
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 
 import "./XBRMaintained.sol";
 import "./XBRTypes.sol";
-import "./XBRToken.sol";
 import "./XBRNetwork.sol";
 import "./XBRCatalog.sol";
 
@@ -34,7 +34,7 @@ import "./XBRCatalog.sol";
  * contract manages XBR data markets and serves as an anchor for all payment and paying channels for
  * each respective market.
  */
-contract XBRMarket is XBRMaintained {
+contract XBRMarket is Initializable {
 
     // Add safe math functions to uint256 using SafeMath lib from OpenZeppelin
     using SafeMath for uint256;
@@ -62,7 +62,7 @@ contract XBRMarket is XBRMaintained {
         uint8 delegateType, bytes16 apiCatalog, bool consent, string servicePrefix);
 
     /// Channel closing timeout in number of blocks for closing a channel non-cooperatively.
-    uint256 public NONCOOPERATIVE_CHANNEL_CLOSE_TIMEOUT = 1440;
+    uint256 public NONCOOPERATIVE_CHANNEL_CLOSE_TIMEOUT;
 
     /// Instance of XBRNetwork contract this contract is linked to.
     XBRNetwork public network;
@@ -71,7 +71,7 @@ contract XBRMarket is XBRMaintained {
     XBRCatalog public catalog;
 
     /// Created markets are sequence numbered using this counter (to allow deterministic collision-free IDs for markets)
-    uint32 public marketSeq = 1;
+    uint32 public marketSeq;
 
     /// Current XBR Markets ("market directory")
     mapping(bytes16 => XBRTypes.Market) public markets;
@@ -94,7 +94,10 @@ contract XBRMarket is XBRMaintained {
     // Constructor for this contract, only called once (when deploying the network).
     //
     // @param networkAdr The XBR network contract this instance is associated with.
-    constructor (address networkAdr, address catalogAdr) public {
+    function initialize (address networkAdr, address catalogAdr) public initializer {
+        NONCOOPERATIVE_CHANNEL_CLOSE_TIMEOUT = 1440;
+        marketSeq = 1;
+
         network = XBRNetwork(networkAdr);
         catalog = XBRCatalog(catalogAdr);
     }
@@ -358,6 +361,11 @@ contract XBRMarket is XBRMaintained {
     }
 
     function _leaveMarket (address member, uint256 left, bytes16 marketId, uint8 actorType, bytes memory signature) public returns (uint256) {
+
+        // workaround because I cannot find the fucking option to disable
+        // the "Warning: Unused function parameter." shit
+        require(signature.length >= 0);
+
         (, , , XBRTypes.MemberLevel member_level, ) = network.members(member);
 
         // the joining sender must be a registered member

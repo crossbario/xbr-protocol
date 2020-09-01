@@ -1,0 +1,31 @@
+{
+  "manifestVersion": "2.2",
+  "contracts": {
+    "XBRTest": "XBRTest",
+    "XBRNetwork": "XBRNetwork",
+    "XBRMaintained": "XBRMaintained",
+    "XBRToken": "XBRToken",
+    "XBRMarket": "XBRMarket",
+    "XBRDomain": "XBRDomain",
+    "XBRCatalog": "XBRCatalog",
+    "XBRChannel": "XBRChannel"
+  },
+  "dependencies": {},
+  "name": "xbr",
+  "version": "20.5.1",
+  "compiler": {
+    "compilerSettings": {
+      "optimizer": {
+        "enabled": false,
+        "runs": "200"
+      }
+    },
+    "typechain": {
+      "enabled": false
+    },
+    "manager": "truffle",
+    "artifactsDir": "build/contracts",
+    "contractsDir": "contracts"
+  },
+  "telemetryOptIn": true
+}

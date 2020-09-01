@@ -63,7 +63,7 @@ contract('XBRTest', accounts => {
         await testcontract.test({from: sender, gasLimit: gasLimit});
     });
 
-    it('XBRTest.test_verify1() : signature verification function should succeed', async () => {
+    it('XBRTest.test_verify1() : valid signature verification function should succeed', async () => {
 
         // r_bytes32 || s_bytes32 || v_uint8
         const sig = "0x4355c47d63924e8a72e509b65029052eb6c299d53a04e167c5775fd466751c9d07299936d304c153f6443dfa05f40ff007d72911b6f72307f996231605b915621c"
@@ -79,7 +79,23 @@ contract('XBRTest', accounts => {
         assert.equal(res, true, "XBRTest.test_verify1(): failed to verify signature")
     });
 
-    it('XBRTest.test_verify2() : signature verification function should succeed', async () => {
+    it('XBRTest.test_verify1() : invalid signature verification function should fail', async () => {
+
+        // r_bytes32 || s_bytes32 || v_uint8
+        const sig = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+        res = await testcontract.test_verify1(
+            "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
+            "Cow", "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
+            "Bob", "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+            "Hello, Bob!",
+            sig,
+            {from: sender, gasLimit: gasLimit}
+        );
+        assert.equal(res, false, "XBRTest.test_verify1(): failed to verify signature")
+    });
+
+    it('XBRTest.test_verify2() : valid signature verification function should succeed', async () => {
 
         res = await testcontract.test_verify2(
             "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
@@ -92,6 +108,21 @@ contract('XBRTest', accounts => {
             {from: sender, gasLimit: gasLimit}
         );
         assert.equal(res, true, "XBRTest.test_verify2(): failed to verify signature")
+    });
+
+    it('XBRTest.test_verify2() : invalid signature verification function should fail', async () => {
+
+        res = await testcontract.test_verify2(
+            "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
+            "Cow", "0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
+            "Bob", "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+            "Hello, Bob!",
+            "0x1c",
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            {from: sender, gasLimit: gasLimit}
+        );
+        assert.equal(res, false, "XBRTest.test_verify2(): failed to verify signature")
     });
 
     it('JS : should compute and recover a correct signature', async () => {

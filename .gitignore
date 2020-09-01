@@ -27,3 +27,5 @@ geth/privchain
 docker/data
 .coverage_contracts/
 .coverage_artifacts/
+
+.openzeppelin/.session
